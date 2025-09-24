@@ -34,17 +34,11 @@ function SortableImage({
 
     const style: React.CSSProperties = {
         transform: CSS.Transform.toString(transform),
-        transition,
-        position: "relative",
-        width: "100px",
-        height: "100px",
-        border: "1px solid #ccc",
-        borderRadius: "0.1rem",
-        overflow: "hidden",
+        transition
     };
 
     return (
-        <div ref={setNodeRef} style={style}>
+        <div ref={setNodeRef} className="img-wrapper" style={style}>
             <img src={preview} alt="preview" />
 
             {renderOverlay && <div className="img-info">{renderOverlay(file)}</div>}
