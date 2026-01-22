@@ -91,7 +91,7 @@ const Resize = () => {
                 status: "info",
             });
 
-            const endpoint = `${process.env.REACT_APP_API_URL}/resize-image`;
+            const endpoint = `${process.env.REACT_APP_API_URL}/resize`;
             const response = await fetch(endpoint, {
                 method: "POST",
                 body: formData,

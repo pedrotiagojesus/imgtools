@@ -145,7 +145,7 @@ const Convert = () => {
                 status: "info",
             });
 
-            const endpoint = `${process.env.REACT_APP_API_URL}/convert-image`;
+            const endpoint = `${process.env.REACT_APP_API_URL}/convert`;
             const response = await fetch(endpoint, {
                 method: "POST",
                 body: formData,

@@ -52,7 +52,7 @@ const CreatePdf = () => {
                 status: "info",
             });
 
-            const endpoint = `${process.env.REACT_APP_API_URL}/pdf-from-images`;
+            const endpoint = `${process.env.REACT_APP_API_URL}/pdf`;
             const response = await fetch(endpoint, {
                 method: "POST",
                 body: formData,

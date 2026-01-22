@@ -4,7 +4,7 @@ const getImageMetadata = async (
     const formData = new FormData();
     formData.append("image", file);
 
-    const endpoint = `${process.env.REACT_APP_API_URL}/image-metadata`;
+    const endpoint = `${process.env.REACT_APP_API_URL}/metadata`;
     const res = await fetch(endpoint, {
         method: "POST",
         body: formData,

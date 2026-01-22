@@ -77,7 +77,7 @@ const ChangeDpi = () => {
                 status: "info",
             });
 
-            const endpoint = `${process.env.REACT_APP_API_URL}/ajust-dpi`;
+            const endpoint = `${process.env.REACT_APP_API_URL}/dpi`;
             const response = await fetch(endpoint, {
                 method: "POST",
                 body: formData,
