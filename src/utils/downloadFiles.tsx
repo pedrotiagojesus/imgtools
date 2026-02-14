@@ -1,31 +1,33 @@
-export async function downloadFilesFromResponse(res: Response): Promise<void> {
-  if (!res.ok) {
-    throw new Error(`Request failed with status ${res.status}`);
-  }
+import type { AxiosResponse } from "axios";
 
-  const data = await res.json();
-
-  if (!data.files || !Array.isArray(data.files)) {
-    throw new Error("Resposta inválida do servidor");
-  }
-
-  data.files.forEach((file: { filename: string; mimeType: string; data: string }) => {
-    const byteCharacters = atob(file.data);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
+export async function downloadFilesFromResponse(res: AxiosResponse): Promise<void> {
+    if (!res.status) {
+        throw new Error(`Request failed with status ${res.status}`);
     }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: file.mimeType });
-    const url = URL.createObjectURL(blob);
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = file.filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const data = await res.data;
 
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-  });
+    if (!data.files || !Array.isArray(data.files)) {
+        throw new Error("Resposta inválida do servidor");
+    }
+
+    data.files.forEach((file: { filename: string; mimeType: string; data: string }) => {
+        const byteCharacters = atob(file.data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: file.mimeType });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = file.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+    });
 }

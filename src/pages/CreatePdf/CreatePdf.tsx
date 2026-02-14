@@ -1,26 +1,32 @@
 import { useState } from "react";
 
-// Components
-import EndpointFeedback from "../../components/EndpointFeedback/EndpointFeedback";
-import ButtonSubmit from "../../components/ButtonSubmit/ButtonSubmit";
-import ImageUploader from "../../components/ImageUploader/ImageUploader";
-
 // CSS
 import "./CreatePdf.css";
+
+// Components
+import EndpointFeedback from "@components/EndpointFeedback/EndpointFeedback";
+import ButtonSubmit from "@components/ButtonSubmit/ButtonSubmit";
+import ImageUploader from "@components/ImageUploader/ImageUploader";
+
+// Services
+import { createPdf } from "@services/imageService";
+
+// Types
+import type { Feedback } from "@appTypes/core";
 
 const CreatePdf = () => {
     const [images, setImages] = useState<File[]>([]);
     const [pdfTitle, setPdfTitle] = useState<string>("");
     const [pdfSubject, setPdfSubject] = useState<string>("");
 
-    const [btnSumbit, setBtnSubmit] = useState({
+    const [btnSubmit, setBtnSubmit] = useState({
         disabled: false,
         value: "Create PDF",
     });
 
-    const [feedback, setFeedback] = useState({
+    const [feedback, setFeedback] = useState<Feedback>({
         message: "",
-        status: null as "success" | "error" | "warning" | "info" | "danger" | null,
+        status: null,
     });
 
     const handleCreate = async (e: React.FormEvent) => {
@@ -34,13 +40,6 @@ const CreatePdf = () => {
             return;
         }
 
-        const formData = new FormData();
-        Array.from(images).forEach((file) => {
-            formData.append("images", file);
-        });
-        formData.append("pdfTitle", pdfTitle);
-        formData.append("pdfSubject", pdfSubject);
-
         try {
             setBtnSubmit({
                 value: "Creating...",
@@ -52,18 +51,14 @@ const CreatePdf = () => {
                 status: "info",
             });
 
-            const endpoint = `${process.env.REACT_APP_API_URL}/pdf`;
-            const response = await fetch(endpoint, {
-                method: "POST",
-                body: formData,
+            const response = await createPdf(images, pdfTitle, pdfSubject);
+            const blob = new Blob([response.data], {
+                type: "application/pdf",
             });
 
-            const blob = await response.blob();
-
-            // Tenta obter o nome do ficheiro do header
-            const contentDisposition = response.headers.get("Content-Disposition");
+            const contentDisposition = response.headers["content-disposition"];
             const headerFilename = contentDisposition?.match(/filename="?(.+)"?/)?.[1];
-            const fallbackFilename = response.headers.get("X-Filename") || "output.pdf";
+            const fallbackFilename = response.headers["x-filename"] || "output.pdf";
 
             const filename = headerFilename || fallbackFilename;
 
@@ -125,7 +120,7 @@ const CreatePdf = () => {
                     />
                 </div>
 
-                <ButtonSubmit disabled={btnSumbit.disabled} description={btnSumbit.value} />
+                <ButtonSubmit disabled={btnSubmit.disabled} description={btnSubmit.value} />
             </form>
 
             <EndpointFeedback status={feedback.status} description={feedback.message} />

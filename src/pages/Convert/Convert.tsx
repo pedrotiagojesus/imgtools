@@ -1,16 +1,21 @@
 import { useEffect, useState } from "react";
 
-// Components
-import EndpointFeedback from "../../components/EndpointFeedback/EndpointFeedback";
-import ButtonSubmit from "../../components/ButtonSubmit/ButtonSubmit";
-import ImageUploader from "../../components/ImageUploader/ImageUploader";
-
 // CSS
 import "./Convert.css";
 
+// Components
+import EndpointFeedback from "@components/EndpointFeedback/EndpointFeedback";
+import ButtonSubmit from "@components/ButtonSubmit/ButtonSubmit";
+import ImageUploader from "@components/ImageUploader/ImageUploader";
+
 // Utils
-import { downloadFilesFromResponse } from "../../utils/downloadFiles";
-import { getImageMetadata } from "../../utils/imageDetail";
+import { downloadFilesFromResponse } from "@utils/downloadFiles";
+
+// Services
+import { convertImages, getImageMetadata } from "@services/imageService";
+
+// Types
+import type { Feedback } from "@appTypes/core";
 
 const Convert = () => {
     var converOptions = [
@@ -55,9 +60,9 @@ const Convert = () => {
         value: "Convert",
     });
 
-    const [feedback, setFeedback] = useState({
+    const [feedback, setFeedback] = useState<Feedback>({
         message: "",
-        status: null as "success" | "error" | "warning" | "info" | "danger" | null,
+        status: null,
     });
 
     useEffect(() => {
@@ -96,24 +101,26 @@ const Convert = () => {
     }, [images, format]);
 
     useEffect(() => {
+        if (images.length === 0) {
+            setMetadataMap({});
+            return;
+        }
         const fetchMetadata = async () => {
-            const map: Record<string, string> = {};
-            for (const img of images) {
-                try {
-                    const { format } = await getImageMetadata(img);
-                    map[img.name] = `${format}`;
-                } catch {
-                    map[img.name] = "Unknown";
-                }
-            }
-            setMetadataMap(map);
+            const entries = await Promise.all(
+                images.map(async (img) => {
+                    try {
+                        const { format } = await getImageMetadata(img);
+                        return [img.name, `${format}`] as const;
+                    } catch {
+                        return [img.name, "Unknown"] as const;
+                    }
+                }),
+            );
+
+            setMetadataMap(Object.fromEntries(entries));
         };
 
-        if (images.length > 0) {
-            fetchMetadata();
-        } else {
-            setMetadataMap({});
-        }
+        fetchMetadata();
     }, [images]);
 
     const handleConvert = async (e: React.FormEvent) => {
@@ -127,13 +134,6 @@ const Convert = () => {
             return;
         }
 
-        const formData = new FormData();
-        Array.from(images).forEach((file) => {
-            formData.append("images", file);
-        });
-        formData.append("format", format);
-        formData.append("zip", "false");
-
         try {
             setBtnSubmit({
                 value: "Converting...",
@@ -145,12 +145,7 @@ const Convert = () => {
                 status: "info",
             });
 
-            const endpoint = `${process.env.REACT_APP_API_URL}/convert`;
-            const response = await fetch(endpoint, {
-                method: "POST",
-                body: formData,
-            });
-
+            const response = await convertImages(images,format);
             await downloadFilesFromResponse(response);
 
             setFeedback({
@@ -158,7 +153,6 @@ const Convert = () => {
                 status: "success",
             });
         } catch (error) {
-            console.error(error);
             setFeedback({
                 message: error instanceof Error ? error.message : "Processing failure",
                 status: "danger",

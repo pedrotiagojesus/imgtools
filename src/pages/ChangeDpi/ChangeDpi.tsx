@@ -1,16 +1,21 @@
 import { useEffect, useState } from "react";
 
-// Components
-import ButtonSubmit from "../../components/ButtonSubmit/ButtonSubmit";
-import EndpointFeedback from "../../components/EndpointFeedback/EndpointFeedback";
-import ImageUploader from "../../components/ImageUploader/ImageUploader";
-
 // CSS
 import "./ChangeDpi.css";
 
+// Components
+import EndpointFeedback from "@components/EndpointFeedback/EndpointFeedback";
+import ButtonSubmit from "@components/ButtonSubmit/ButtonSubmit";
+import ImageUploader from "@components/ImageUploader/ImageUploader";
+
 // Utils
-import { downloadFilesFromResponse } from "../../utils/downloadFiles";
-import { getImageMetadata } from "../../utils/imageDetail";
+import { downloadFilesFromResponse } from "@utils/downloadFiles";
+
+// Services
+import { dpiImages, getImageMetadata } from "@services/imageService";
+
+// Types
+import type { Feedback } from "@appTypes/core";
 
 const ChangeDpi = () => {
     const [images, setImages] = useState<File[]>([]);
@@ -22,30 +27,32 @@ const ChangeDpi = () => {
         value: "Change DPI",
     });
 
-    const [feedback, setFeedback] = useState({
+    const [feedback, setFeedback] = useState<Feedback>({
         message: "",
-        status: null as "success" | "error" | "warning" | "info" | "danger" | null,
+        status: null,
     });
 
     useEffect(() => {
+        if (images.length === 0) {
+            setMetadataMap({});
+            return;
+        }
         const fetchMetadata = async () => {
-            const map: Record<string, string> = {};
-            for (const img of images) {
-                try {
-                    const { dpi } = await getImageMetadata(img);
-                    map[img.name] = `DPI: ${dpi}`;
-                } catch {
-                    map[img.name] = "DPI: Unknown";
-                }
-            }
-            setMetadataMap(map);
+            const entries = await Promise.all(
+                images.map(async (img) => {
+                    try {
+                        const { dpi } = await getImageMetadata(img);
+                        return [img.name, `DPI: ${dpi}`] as const;
+                    } catch {
+                        return [img.name, "DPI: Unknown"] as const;
+                    }
+                }),
+            );
+
+            setMetadataMap(Object.fromEntries(entries));
         };
 
-        if (images.length > 0) {
-            fetchMetadata();
-        } else {
-            setMetadataMap({});
-        }
+        fetchMetadata();
     }, [images]);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -59,13 +66,6 @@ const ChangeDpi = () => {
             return;
         }
 
-        const formData = new FormData();
-        Array.from(images).forEach((image) => {
-            formData.append("images", image);
-        });
-        formData.append("dpi", dpi);
-        formData.append("zip", "false");
-
         try {
             setBtnSubmit({
                 value: "Processing...",
@@ -77,12 +77,7 @@ const ChangeDpi = () => {
                 status: "info",
             });
 
-            const endpoint = `${process.env.REACT_APP_API_URL}/dpi`;
-            const response = await fetch(endpoint, {
-                method: "POST",
-                body: formData,
-            });
-
+            const response = await dpiImages(images, dpi);
             await downloadFilesFromResponse(response);
 
             setFeedback({

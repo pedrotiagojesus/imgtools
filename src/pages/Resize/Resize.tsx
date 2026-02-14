@@ -1,16 +1,21 @@
 import { useEffect, useState } from "react";
 
 // Components
-import EndpointFeedback from "../../components/EndpointFeedback/EndpointFeedback";
-import ButtonSubmit from "../../components/ButtonSubmit/ButtonSubmit";
-import ImageUploader from "../../components/ImageUploader/ImageUploader";
+import EndpointFeedback from "@components/EndpointFeedback/EndpointFeedback";
+import ButtonSubmit from "@components/ButtonSubmit/ButtonSubmit";
+import ImageUploader from "@components/ImageUploader/ImageUploader";
 
 // CSS
 import "./Resize.css";
 
 // Utils
-import { downloadFilesFromResponse } from "../../utils/downloadFiles";
-import { getImageMetadata } from "../../utils/imageDetail";
+import { downloadFilesFromResponse } from "@utils/downloadFiles";
+
+// Services
+import { resizeImages, getImageMetadata } from "@services/imageService";
+
+// Types
+import type { Feedback } from "@appTypes/core";
 
 const Resize = () => {
     const [images, setImages] = useState<File[]>([]);
@@ -21,9 +26,9 @@ const Resize = () => {
         value: "Resize",
     });
 
-    const [feedback, setFeedback] = useState({
+    const [feedback, setFeedback] = useState<Feedback>({
         message: "",
-        status: null as "success" | "error" | "warning" | "info" | "danger" | null,
+        status: null
     });
 
     const [dimensions, setDimensions] = useState({
@@ -32,30 +37,33 @@ const Resize = () => {
     });
 
     useEffect(() => {
+        if (images.length === 0) {
+            setMetadataMap({});
+            return;
+        }
+
         const fetchMetadata = async () => {
-            const map: Record<string, string> = {};
-            for (const img of images) {
-                try {
-                    const { width, height } = await getImageMetadata(img);
-                    map[img.name] = `${width} x ${height}`;
-                } catch {
-                    map[img.name] = "Unknown";
-                }
-            }
-            setMetadataMap(map);
+            const entries = await Promise.all(
+                images.map(async (img) => {
+                    try {
+                        const { width, height } = await getImageMetadata(img);
+                        return [img.name, `${width} x ${height}`] as const;
+                    } catch {
+                        return [img.name, "Unknown"] as const;
+                    }
+                }),
+            );
+
+            setMetadataMap(Object.fromEntries(entries));
         };
 
-        if (images.length > 0) {
-            fetchMetadata();
-        } else {
-            setMetadataMap({});
-        }
+        fetchMetadata();
     }, [images]);
 
     const handleResize = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!images || images.length === 0) {
+        if (images.length === 0) {
             setFeedback({
                 message: "Select at least one image",
                 status: "warning",
@@ -65,20 +73,11 @@ const Resize = () => {
 
         if (!dimensions.width && !dimensions.height) {
             setFeedback({
-                message: "Set the width and/or height",
+                message: "Set the width and height",
                 status: "warning",
             });
             return;
         }
-
-        const formData = new FormData();
-        Array.from(images).forEach((image) => {
-            formData.append("images", image);
-        });
-
-        if (dimensions.width) formData.append("width", dimensions.width);
-        if (dimensions.height) formData.append("height", dimensions.height);
-        formData.append("zip", "false");
 
         try {
             setBtnSubmit({
@@ -91,12 +90,7 @@ const Resize = () => {
                 status: "info",
             });
 
-            const endpoint = `${process.env.REACT_APP_API_URL}/resize`;
-            const response = await fetch(endpoint, {
-                method: "POST",
-                body: formData,
-            });
-
+            const response = await resizeImages(images, dimensions.width, dimensions.height);
             await downloadFilesFromResponse(response);
 
             setFeedback({
@@ -104,7 +98,6 @@ const Resize = () => {
                 status: "success",
             });
         } catch (error) {
-            console.error(error);
             setFeedback({
                 message: error instanceof Error ? error.message : "Processing failure",
                 status: "danger",
@@ -169,10 +162,8 @@ const Resize = () => {
                         </div>
                     </div>
                 </div>
-
                 <ButtonSubmit disabled={btnSumbit.disabled} description={btnSumbit.value} />
             </form>
-
             <EndpointFeedback status={feedback.status} description={feedback.message} />
         </div>
     );
