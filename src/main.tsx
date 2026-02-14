@@ -46,7 +46,9 @@ const router = createBrowserRouter([
             },
         ],
     },
-]);
+], {
+    basename: "/imgtools",
+});
 
 createRoot(document.getElementById("root")!).render(
     <StrictMode>
