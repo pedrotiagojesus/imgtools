@@ -26,10 +26,12 @@ jobs:
           VITE_ENDPOINT: ${{ secrets.VITE_ENDPOINT }}
           VITE_TIMEOUT: ${{ secrets.VITE_TIMEOUT }}
 
+      - name: Verify build
+        run: ls -la ./dist
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           publish_branch: gh-pages
-          force_orphan: true
